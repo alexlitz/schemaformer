@@ -31,7 +31,7 @@ prompt = "I am Alex I am 24 years old and I live in Pittsburgh"
 generated_text = schemaformer(prompt, schema)
 
 print(generated_text)
-# {'name': 'John Doe', 'age': 30, 'city': 'New York'}
+# {'name': 'Alex', 'age': 24, 'city': 'Pittsburgh'}
 ```
 # Work in Progress
 
