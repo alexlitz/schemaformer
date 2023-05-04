@@ -137,8 +137,9 @@ def json_validate_prefix_number(json_str, schema):
     return schema['type'] in ('number', 'integer'), json_str
 
 def json_validate_prefix_inner(json_str, schema, return_remainder=False):
+    if json_str.startswith(" "):
+        return False, json_str
     json_str = json_str.lstrip()
-
     if len(json_str) == 0:
         return True, ""
     elif json_str.startswith('{'):

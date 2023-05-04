@@ -23,7 +23,6 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(args.model, use_cache=True)
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True, use_cache=True)
     print("Loaded model and tokenizer")
-    prompt = f"Tell me a 4 word story in this schema: {schema}"
 
     schema_model = Schemaformer(model, tokenizer, temperature=args.temperature)
     print("Generating...")
