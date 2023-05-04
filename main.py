@@ -10,7 +10,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="databricks/dolly-v2-3b")
     parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--prompt", type=str, default="")
+    parser.add_argument("--prompt", type=str, default="I am Alex I am 24 years old and I live in Pittsburgh")
     parser.add_argument("--schema_filename", type=str, default="schema.json")
 
     args = parser.parse_args()

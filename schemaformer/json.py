@@ -4,6 +4,7 @@ import json
 from jsonschema import validate
 import re
 import os
+from itertools import count 
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,8 @@ if os.environ.get('DEBUG', False):
     # Add the StreamHandler to the logger
     logger.addHandler(console_handler)
 
+number_length_limit = 10
+string_length_limit = 100
 
 def maybe_iter_properties(schema):
     if 'properties' in schema:
@@ -28,7 +31,7 @@ def maybe_iter_properties(schema):
             yield f'"{prop}":', prop_schema
 
 def startswith_valid_end(json_str):
-    return json_str.startswith('}') or json_str.startswith(']') or json_str.startswith(',') or json_str.startswith(' ') or json_str.startswith('\n') or json_str.startswith('\t') or json_str.startswith('\r')
+    return json_str.startswith(('}', ']', ',', ' ', '\n', '\t', '\r'))
 
 def json_validate_prefix_object(json_str, schema):
     logger.debug(f'json_validate_prefix_object({repr(json_str)}, {schema})',) 
@@ -37,21 +40,32 @@ def json_validate_prefix_object(json_str, schema):
     json_str = json_str[1:]
     atleast_one_prop = False
     all_props = False
-    for prop_str, prop_schema in maybe_iter_properties(schema):
-        if prop_str.startswith(json_str):
-            return True, ""
-        if json_str.startswith(prop_str):
-            ok, json_str = json_validate_prefix_inner(json_str[len(prop_str):], prop_schema, return_remainder=True)
-            if not ok:
-                return ok, json_str
-            atleast_one_prop = True
-            if json_str.startswith(','):
-                # FIXME not correct
-                return False, json_str[1:]
-            if json_str.startswith('}'):
-                return True, json_str[1:]
-            # FIXME not correct
-            # return json_validate_prefix_object(json_str, schema)
+    l = list(maybe_iter_properties(schema))
+    if len(l) == 0:
+        return False, json_str
+    
+    d = dict(l)
+    while len(d) > 0:
+        for prop_str, prop_schema in d.items():
+            if prop_str.startswith(json_str):
+                return True, ""
+            elif json_str.startswith(prop_str):
+                ok, json_str = json_validate_prefix_inner(json_str[len(prop_str):], prop_schema, return_remainder=True)
+                if not ok:
+                    return ok, json_str
+                atleast_one_prop = True
+                if json_str.startswith(','):
+                    if len(json_str) == 1:
+                        return False, json_str
+                    json_str = json_str[1:]
+                if json_str.startswith('}'):
+                    return True, json_str[1:]
+                del d[prop_str]
+                break
+        else:
+            break
+        if len(d) == 0 or len(json_str) == 0:
+            break
 
     return atleast_one_prop, json_str
 
@@ -90,17 +104,23 @@ def maybe_get_full_string(json_str):
 
 def json_validate_prefix_string(json_str, schema):
     logger.debug(f'json_validate_prefix_string({repr(json_str)}, {schema})')
+    json_str = json_str[1:] # Ignore the starting double-quote
+    if len(json_str) == 0:
+        return True, ""
+    S, json_str, is_full_str = maybe_get_full_string(json_str)
+    if len(S) > string_length_limit:
+        return False, json_str
+    ret = True
     if 'pattern' in schema:
-        json_str = json_str[1:] # Ignore the starting double-quote
-        if len(json_str) == 0:
-            return True, ""
-
         pattern = schema['pattern']
-        S, json_str, is_full_str = maybe_get_full_string(json_str)
         ret, json_str = prefix_matches_regex(S, pattern, is_full_str), json_str
-        return ret, json_str
-        
-    return False, json_str
+
+    if len(json_str) == 0:
+        return True, ""
+    elif startswith_valid_end(json_str):
+        return ret, json_str[1:]
+    else:
+        return False, json_str
 
 def json_validate_prefix_boolean(json_str, schema):
     logger.debug(f'json_validate_prefix_boolean({repr(json_str)}, {schema})')
@@ -123,17 +143,22 @@ def json_validate_prefix_number(json_str, schema):
         json_str = json_str[1:]
 
     seen_dot = False
-    while json_str:
-        if json_str[0] == '.':
+    for L in count():
+        if len(json_str) == 0:
+            break
+        elif json_str[0] == '.':
             if seen_dot:
                 return False, json_str
             seen_dot = True
+        elif startswith_valid_end(json_str):
+            json_str = json_str[1:]
+            break
         elif not json_str[0].isdigit():
             return False, json_str
-        elif startswith_valid_end(json_str):
-            break
         json_str = json_str[1:]
-    
+        if L > number_length_limit:
+            return False, json_str
+
     return schema['type'] in ('number', 'integer'), json_str
 
 def json_validate_prefix_inner(json_str, schema, return_remainder=False):

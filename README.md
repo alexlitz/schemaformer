@@ -21,28 +21,34 @@ Define your JSON schema and generate text based on the schema:
 schema = {
     "type": "object",
     "properties": {
-        "story": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string",
-                    "pattern": "^once upon a time"
-                }
-            },
-            "required": ["title"]
-        }
+        "name": {"type": "string"},
+        "age": {"type": "integer"},
+        "city": {"type": "string"}
     },
-    "required": ["story"]
+    "required": ["name", "age", "city"]
 }
-prompt = "Tell me a 4 word story"
+prompt = "I am Alex I am 24 years old and I live in Pittsburgh"
 generated_text = schemaformer(prompt, schema)
 
 print(generated_text)
-# {"story":{"title":"once upon a time"}}
+# {'name': 'John Doe', 'age': 30, 'city': 'New York'}
 ```
 # Work in Progress
 
 Please note that Schemaformer is a work in progress. While the core functionality is in place, much is broken owing to the hastly implemented valid pre-fix checking. We appreciate your understanding and welcome any feedback, contributions, or bug reports to help us improve the library.
+
+# Improvements
+
+There are several areas where Schemaformer can be improved:
+
+Caching portions of the string that have already been validated: As Schemaformer processes the input string, it can benefit from caching portions of the string that have already been validated. This will help avoid redundant checks and speed up the validation process.
+
+More efficiently checking tokens per character: Schemaformer currently checks tokens for each character in the input string. Optimizing the token checking process to better handle large input strings can improve the performance of the application.
+
+Improving support for more JSON Schema features: While Schemaformer currently supports a limited set of JSON Schema features, expanding its support for additional features would make it more versatile and useful in various applications. This may include handling more complex schema structures, supporting additional validation keywords, and implementing features like conditional validation.
+
+Speeding up + paralellizing the valid pre-fix checking.
+
 
 # Customization
 Schemaformer allows you to customize the generation process by modifying parameters such as the temperature, max tokens, and more:

@@ -7,7 +7,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 from itertools import chain
 from collections import defaultdict
 
-from schemaformer.json import json_validate_prefix
+from schemaformer.json import *
 
 
 class Schemaformer:
@@ -67,8 +67,12 @@ class Schemaformer:
                 valid = [eos]
             except:
                 valid = [e for e in valid if e != eos]
-                
-            return valid      
+            
+            # if len(valid) == 0:
+            #     print(f"{input_str=} {len(valid)=}")
+            #     print(f"json_validate_prefix(input_str, schema)")
+            #     import code; code.interact(local=dict(globals(), **locals()))
+            return valid
 
         return prefix_allowed_tokens_fn
 

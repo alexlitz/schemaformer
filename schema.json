@@ -1,17 +1,9 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-        "story": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "type": "string",
-                    "pattern": "^once upon a time"
-                }
-            },
-            "required": ["title"]
-        }
+        "name": {"type": "string"},
+        "age": {"type": "integer"},
+        "city": {"type": "string"}
     },
-    "required": ["story"]
+    "required": ["name", "age", "city"]
 }
