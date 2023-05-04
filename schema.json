@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "name": {"type": "string"},
+        "name": {"type": "string", "pattern": "^al"},
         "age": {"type": "integer"},
         "city": {"type": "string"}
     },

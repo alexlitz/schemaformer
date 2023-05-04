@@ -89,4 +89,5 @@ class Schemaformer:
             pad_token_id=self.tokenizer.eos_token_id,
         )
         text = self.tokenizer.decode(response[0][tokenized_prompt.size(1):-1])
+        print(text)
         return json.loads(text)

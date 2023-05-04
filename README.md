@@ -33,6 +33,24 @@ generated_text = schemaformer(prompt, schema)
 print(generated_text)
 # {'name': 'Alex', 'age': 24, 'city': 'Pittsburgh'}
 ```
+
+You can also use the pattern functionality to constrain the output e.g.:
+```
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "pattern": "^al"},
+        "age": {"type": "integer"},
+        "city": {"type": "string"}
+    },
+    "required": ["name", "age", "city"]
+}
+prompt = "I am Alex I am 24 years old and I live in Pittsburgh"
+generated_text = schemaformer(prompt, schema)
+
+print(generated_text)
+# {'name': 'al', 'age': 24, 'city': 'Pittsburgh'}
+```
 # Work in Progress
 
 Please note that Schemaformer is a work in progress. While the core functionality is in place, much is broken owing to the hastly implemented valid pre-fix checking. We appreciate your understanding and welcome any feedback, contributions, or bug reports to help us improve the library.
