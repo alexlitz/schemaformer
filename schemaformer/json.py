@@ -161,6 +161,21 @@ def maybe_get_full_string(json_str):
         json_str = json_str[i+1:]
     return S + json_str, "", False
 
+
+def format_to_pattern(format):
+    formats_dict = {
+        "date-time": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.\\d+)?(Z|[+-][01][0-9]:[0-5][0-9])$",
+        "email": "^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*$",
+        "hostname": "^(?=.{1,253})(?=.{1,63}(?:\\.|$))(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(?:\\.[a-zA-Z0-9-]{1,63}(?<!-))*$",
+        "ipv4": "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+        "ipv6": "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$",
+        "uri": "^(?:(?:https?|ftp):\\/\\/)(?:\\S+(?::\\S*)?@)?(?:(?:(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[1-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]-*)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]-*)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,}))\\.?))(?::\\d{2,5})?(?:[/?#]\\S*)?$"
+    }
+    if format in formats_dict:
+        return formats_dict[format]
+    else:
+        raise Exception(f"Unknown format: {format}")
+
 def json_validate_prefix_string(json_str, schema):
     logger.debug(f'json_validate_prefix_string({repr(json_str)}, {schema})')
     assert (schema['type'] == 'string')
@@ -198,8 +213,11 @@ def json_validate_prefix_string(json_str, schema):
             if not(any([s.startswith(S) for s in allowed_strings])):
                 return False, json_str
 
-    ret = True
-    if 'pattern' in schema:
+    ret = True;
+    if 'format' in schema:
+        pattern = format_to_pattern(schema['format'])
+        ret, json_str = prefix_matches_regex(S, pattern, is_full_str), json_str
+    elif 'pattern' in schema:
         pattern = schema['pattern']
         ret, json_str = prefix_matches_regex(S, pattern, is_full_str), json_str
 
