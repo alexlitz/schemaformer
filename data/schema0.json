@@ -1,0 +1,10 @@
+{
+    "type": "object",
+    "properties": {
+        "fruit": {
+            "type": "string",
+            "enum": ["apple", "banana", "cherry", "orange", "grape"]
+        }
+    },
+    "required": ["fruit"]
+}  

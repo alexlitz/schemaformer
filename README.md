@@ -36,10 +36,10 @@ print(generated_text)
 
 You can also use the pattern functionality to constrain the output e.g.:
 ```
-schema = {
+{
     "type": "object",
     "properties": {
-        "name": {"type": "string", "pattern": "^al"},
+        "name": {"type": "string", "pattern": "A..x.n.er"},
         "age": {"type": "integer"},
         "city": {"type": "string"}
     },
@@ -49,7 +49,7 @@ prompt = "I am Alex I am 24 years old and I live in Pittsburgh"
 generated_text = schemaformer(prompt, schema)
 
 print(generated_text)
-# {'name': 'al', 'age': 24, 'city': 'Pittsburgh'}
+# {"name":"Alexander","age":24,"city":"Pittsburgh"}
 ```
 # Work in Progress
 
@@ -66,6 +66,24 @@ More efficiently checking tokens per character: Schemaformer currently checks to
 Improving support for more JSON Schema features: While Schemaformer currently supports a limited set of JSON Schema features, expanding its support for additional features would make it more versatile and useful in various applications. This may include handling more complex schema structures, supporting additional validation keywords, and implementing features like conditional validation.
 
 Speeding up + paralellizing the valid pre-fix checking.
+
+# Feature Support
+- [x] Data types (string, number, integer, boolean, array, object, null)
+- [x] Pattern (string)
+- [x] Enum
+- [ ] Format (date-time, email, hostname, IPv4, IPv6, URI)
+- [x] Required properties
+- [x] Min and max length (string and array)
+- [x] Unique items (array) [Not proper sorting implementation but works for basic data]
+- [ ] AllOf, AnyOf, OneOf, and Not
+
+# Will not support
+- [ ] Conditional schema application
+- [ ] Dependencies
+- [ ] MultipleOf (number and integer)
+- [ ] Default values
+- [ ] Schema references (JSON pointers and URIs)
+- [ ] Minimum and maximum values (number and integer)
 
 
 # Customization
