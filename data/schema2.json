@@ -9,6 +9,5 @@
       "maxLength": 20
     },
     "minItems": 1,
-    "maxItems": 3,
-    "uniqueItems": true
+    "maxItems": 2
 } 

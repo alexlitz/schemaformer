@@ -71,7 +71,7 @@ Speeding up + paralellizing the valid pre-fix checking.
 - [x] Data types (string, number, integer, boolean, array, object, null)
 - [x] Pattern (string)
 - [x] Enum
-- [X] Format (date-time, email, hostname, IPv4, IPv6, URI)
+- [ ] Format (date-time, email, hostname, IPv4, IPv6, URI)
 - [x] Required properties
 - [x] Min and max length (string and array)
 - [x] Unique items (array) [Not proper sorting implementation but works for basic data]

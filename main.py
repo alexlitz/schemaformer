@@ -7,11 +7,11 @@ import torch
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from schemaformer.schemaformer import Schemaformer
-
+from schemaformer.json import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="databricks/dolly-v2-3b")
+    parser.add_argument("--model", type=str, default="gpt2")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--prompt", type=str, default="I am Alex I am 24 years old and I live in Pittsburgh")
     parser.add_argument("--schema_filename", type=str, default="data/schema0.json")
@@ -32,10 +32,11 @@ def main():
     schema_model = Schemaformer(model, tokenizer, temperature=args.temperature)
     print("Generating...")
     s = time.time()
+    # json_validate_prefix_object('{"name":"Alexander","age":24,"city":"Pittsburgh",', {'type': 'object', 'properties': {'name': {'type': 'string', 'pattern': 'Ale[w-z]ande[l-r]'}, 'age': {'type': 'integer'}, 'city': {'type': 'string'}}, 'required': ['name', 'age', 'city']})
     tokens, res = schema_model(args.prompt, schema, return_response=True)
     print("Took: ", time.time() - s)
     print("Generated: ", res)
-    code.interact(local=dict(globals(), **locals()))
+    # code.interact(local=dict(globals(), **locals()))
     decoded_tokens = [tokenizer.decode(e) for e in tokens]
 
 if __name__ == "__main__":

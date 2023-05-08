@@ -4,6 +4,7 @@ import json
 from jsonschema import validate
 import re
 import os
+import copy
 from itertools import count 
 
 logger = logging.getLogger(__name__)
@@ -48,37 +49,41 @@ def json_validate_prefix_object(json_str, schema):
     
     json_str = json_str[1:]
     atleast_one_prop = False
-    all_props = False
     l = list(maybe_iter_properties(schema))
     if len(l) == 0:
         return False, json_str
+
+    n_properties = len(l)
+    n_properties_matched = 0
     
     d = dict(l)
-    while len(d) > 0:
+    while len(d) > 0 or len(json_str) > 0:
         for prop_str, prop_schema in d.items():
+            if not (len(d) > 0 or len(json_str) > 0):
+                break
+        
             if prop_str.startswith(json_str):
                 return True, ""
             elif json_str.startswith(prop_str):
-                ok, json_str = json_validate_prefix_inner(json_str[len(prop_str):], prop_schema, return_remainder=True)
+                ok, json_str = json_validate_prefix_inner(json_str[len(prop_str):], prop_schema)
+                prop_str_name = prop_str[1:-2]
                 if not ok:
                     return ok, json_str
-                if prop_str in required:
-                    required.remove(prop_str)
-                atleast_one_prop = True
+                if prop_str_name in required:
+                    required.remove(prop_str_name)
+                del d[prop_str]
+                n_properties_matched += 1
                 if json_str.startswith(','):
-                    if len(json_str) == 1:
-                        return False, json_str
+                    if n_properties_matched == n_properties or len(d) == 0:
+                        return False, json_str[1:]
                     json_str = json_str[1:]
                 elif json_str.startswith('}'):
                     return len(required) == 0, json_str[1:]
-                del d[prop_str]
                 break
         else:
             break
-        if len(d) == 0 or len(json_str) == 0:
-            break
 
-    return len(required) == 0, json_str
+    return True, json_str
 
 def json_validate_prefix_array(json_str, schema):
     logger.debug(f'json_validate_prefix_array({repr(json_str)}, {schema})')
@@ -89,6 +94,8 @@ def json_validate_prefix_array(json_str, schema):
 
     if 'uniqueItems' in schema:
         uniqueItems = schema['uniqueItems']
+    else:
+        uniqueItems = False
     
     if 'max_items' in schema:
         max_items = schema['max_items']
@@ -101,9 +108,10 @@ def json_validate_prefix_array(json_str, schema):
     
     item_count = 0
     seen_items = set()
+    schema_items = schema['items']
     while True:
         json_str_prev = json_str
-        ok, json_str = json_validate_prefix_inner(json_str, schema['items'], return_remainder=True)
+        ok, json_str = json_validate_prefix_inner(json_str, schema_items)
         if not ok:
             return ok, json_str
         if len(json_str) == 0:
@@ -129,7 +137,6 @@ def json_validate_prefix_array(json_str, schema):
         min_items = schema['min_items']
         if item_count < min_items:
             return False, json_str
-    
     
     return True, json_str
 
@@ -157,8 +164,8 @@ def maybe_get_full_string(json_str):
             break
         if i == 0 or json_str[i-1] != '\\':
             return S + json_str[:i], json_str[i+1:], True
-        S += json_str[:i+1]
-        json_str = json_str[i+1:]
+        S += json_str[:i]
+        json_str = json_str[i:]
     return S + json_str, "", False
 
 
@@ -175,6 +182,32 @@ def format_to_pattern(format):
         return formats_dict[format]
     else:
         raise Exception(f"Unknown format: {format}")
+
+def prefix_matches_format(json_str, format, is_full_str=False):
+    pattern = format_to_pattern(format)
+    if is_full_str:
+        return re.fullmatch(pattern, json_str) is not None
+
+    if format == "ipv4":
+        S = "0.0.0.0"
+    elif format == "ipv6":
+        S = "0000:0000:0000:0000:0000:0000:0000:0000"
+    elif format == "email":
+        S = "a@gmail.com"
+    elif format == "hostname":
+        S = "a.com"
+    # elif format == "date-time":
+    #     S = "2020-01-01T00:00:00Z"
+    # elif format == "uri":
+    #     S = "http://a.com"
+    else:
+        raise Exception(f"Unknown format: {format}")
+
+    for i in range(len(S)):
+        if re.fullmatch(pattern, json_str + S[i:]) is not None:
+            return True
+    else:
+        return False
 
 def json_validate_prefix_string(json_str, schema):
     logger.debug(f'json_validate_prefix_string({repr(json_str)}, {schema})')
@@ -213,18 +246,17 @@ def json_validate_prefix_string(json_str, schema):
             if not(any([s.startswith(S) for s in allowed_strings])):
                 return False, json_str
 
-    ret = True;
+    ret = True
     if 'format' in schema:
-        pattern = format_to_pattern(schema['format'])
-        ret, json_str = prefix_matches_regex(S, pattern, is_full_str), json_str
-    elif 'pattern' in schema:
+        ret = prefix_matches_format(S, schema['format'], is_full_str)
+    if 'pattern' in schema:
         pattern = schema['pattern']
-        ret, json_str = prefix_matches_regex(S, pattern, is_full_str), json_str
+        ret = prefix_matches_regex(S, pattern, is_full_str)
 
     if len(json_str) == 0:
         return ret, ""
     elif is_full_str and startswith_valid_end(json_str):
-        return ret, json_str[1:]
+        return ret, json_str
     else:
         return False, json_str
 
@@ -269,28 +301,58 @@ def json_validate_prefix_number(json_str, schema):
 
     return schema['type'] in ('number', 'integer'), json_str
 
-def json_validate_prefix_inner(json_str, schema, return_remainder=False):
+def hash_schema(schema):
+    return hash(json.dumps(schema, sort_keys=True).encode('utf-8'))
+
+cache = {}
+def json_validate_prefix_inner(json_str, schema=None):
+    global cache
+    do_caching = False
+    logger.debug(f'json_validate_prefix_inner({repr(json_str)}, {schema})')
+
+    if do_caching:
+        schema_hash = schema['schema_hash']
+        key = hash((json_str, schema_hash))
+        if key in cache:
+            return cache[key]
+        
     if json_str.startswith(" "):
-        return False, json_str
-    json_str = json_str.lstrip()
-    schema_type = schema['type']
-    if len(json_str) == 0:
-        return True, ""
-    elif schema_type == 'object':
-        return json_validate_prefix_object(json_str, schema)
-    elif schema_type == 'array':
-        return json_validate_prefix_array(json_str, schema)
-    elif schema_type == 'string':
-        return json_validate_prefix_string(json_str, schema)
-    elif schema_type == 'boolean':
-        return json_validate_prefix_boolean(json_str, schema)
-    elif schema_type == 'null':
-        return json_validate_prefix_null(json_str, schema)
-    elif schema_type in ('number', 'integer'):
-        return json_validate_prefix_number(json_str, schema)
+        ret = (False, json_str)
     else:
-        return False, json_str
+        json_str = json_str.lstrip()
+        schema_type = schema['type']
+        if len(json_str) == 0:
+            ret = (True, "")
+        elif schema_type == 'object':
+            ret = (json_validate_prefix_object(json_str, schema))
+        elif schema_type == 'array':
+            ret = (json_validate_prefix_array(json_str, schema))
+        elif schema_type == 'string':
+            ret = (json_validate_prefix_string(json_str, schema))
+        elif schema_type == 'boolean':
+            ret = (json_validate_prefix_boolean(json_str, schema))
+        elif schema_type == 'null':
+            ret = (json_validate_prefix_null(json_str, schema))
+        elif schema_type in ('number', 'integer'):
+            ret = (json_validate_prefix_number(json_str, schema))
+        else:
+            ret = (False, json_str)
+    
+    if do_caching:    
+        cache[key] = ret
+    return ret
+
+
+def add_hashes_to_schema(schema):
+    schema_hash = hash_schema(schema)
+    if schema['type'] == 'object':
+        for prop in schema['properties']:
+            add_hashes_to_schema(schema['properties'][prop])
+    elif schema['type'] == 'array':
+        add_hashes_to_schema(schema['items'])
+    schema['schema_hash'] = schema_hash
 
 def json_validate_prefix(json_str, schema):
+    logger.info(f'json_validate_prefix({repr(json_str)}, {schema})')
     ok, rem = json_validate_prefix_inner(json_str, schema)
     return ok and len(rem) == 0

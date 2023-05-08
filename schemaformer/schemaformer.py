@@ -54,7 +54,10 @@ class Schemaformer:
 
     def get_prefix_allowed_tokens_fn(self, prompt, schema):
         prompt_len = len(self.tokenizer.encode(prompt))
+        schema = copy.deepcopy(schema)
+        add_hashes_to_schema(schema)
         def prefix_allowed_tokens_fn(batch_id, input_ids):
+            # return list(self.vocab_with_substutution.values())
             # Check if it is a valid JSON string prefix for the given schema
             
             # Convert the input_ids to a string
@@ -81,11 +84,13 @@ class Schemaformer:
                 valid = [eos]
             except:
                 valid = [e for e in valid if e != eos]
+                if len(valid) == 0:
+                    raise Exception(f"Invalid JSON: {input_str} there is a bug in the library")
             
             if len(valid) == 0 or len(input_str) == 10:
                 print(f"{input_str=} {len(valid)=}")
                 print(f"json_validate_prefix(input_str, schema)")
-            import code; code.interact(local=dict(globals(), **locals()))
+                import code; code.interact(local=dict(globals(), **locals()))
             return valid
 
         return prefix_allowed_tokens_fn
